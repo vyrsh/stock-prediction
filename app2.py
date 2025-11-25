@@ -490,7 +490,9 @@ with tab2:
         else:
             col3.warning("Bollinger Bands data not available.")
 
-
+from google import genai
+# set gemini api key as enviroment variable
+client = genai.Client(api_key="AIzaSyBk1kY9-tiQtlWAzZ8Yw_X9I2MTNtRKwGA")
 
 with tab1_col1:
     # check if selected model exists for current ticker
@@ -523,13 +525,75 @@ with tab1_col1:
 
     # predict yth day using previous x days
 
-
+    future_trend = st.session_state.get('future_trend', "N/A")
     st.plotly_chart(plot_stock_price(data,predictions=st.session_state.get('predictions', None),
                                     title=f"{ticker} Stock Price Prediction using {model_type}"), use_container_width=True)
+    try:
+        response = client.models.generate_content(
+                        model="gemini-2.0-flash-lite",
+                        contents=f"""Generate a concise, professional stock analysis summary for the ticker {ticker} using the following data:
 
-from google import genai
-# set gemini api key as enviroment variable
-client = genai.Client(api_key="AIzaSyBk1kY9-tiQtlWAzZ8Yw_X9I2MTNtRKwGA")
+                        Technical Indicators:
+                        - RSI: {rsi_signal}
+                        - MACD: {macd_signal}
+                        
+                        - Bollinger Bands: Upper {bb_high}, Lower {bb_low}, Price {current_close}
+
+                        Model Prediction:
+                        - LSTM Predicted Price: {predictions['predictions'][-1][0]:.2f}
+                        - Actual Price: {current_close}
+                        - Direction: {future_trend}
+
+                        Follow this exact structure and tone:
+
+                        Title: “{ticker} Stock Analysis – Concise Summary”
+
+                        1. Current Outlook: One short line describing the sentiment based on indicators + prediction.
+
+                        2. Technical Indicator Interpretation:
+                        - 3–5 bullet points interpreting RSI, MACD, and Bollinger Bands.
+                        - Mention whether indicators suggest overbought/oversold, momentum, or consolidation.
+
+                        3. Model Prediction Summary:
+                        - 1–2 bullet points explaining the LSTM prediction vs actual and its short-term implication.
+
+                        4. Short-Term Impact:
+                        - One short paragraph on expected movement (bullish, bearish, neutral) combining indicators + model output.
+
+                        5. Provide a confidence score:
+                        -A score between 0-100 that gives the confidence to take the trade.
+
+                        Keep it factual, crisp, and in the exact clean format shown above. No emojis."""
+                    )
+        print(response.text)
+        # write response text in markdown
+        st.markdown("###  AI-Generated Stock Analysis Summary")
+        st.info(f"""
+                            {response.text}
+                    """)
+    except Exception as e:
+            st.info(f"""
+                    **{ticker} Stock Analysis – Concise Summary**
+
+1.  Current Outlook: Mixed, with technical indicators showing conflicting signals and a bearish price prediction from the model.
+
+2.  Technical Indicator Interpretation:
+    *   RSI is neutral, suggesting neither overbought nor oversold conditions.
+    *   MACD is bearish, indicating potential downward momentum.
+    *   Price is currently trading above the upper Bollinger Band, which is potentially a sign of overbought conditions.
+    *   Bollinger Bands indicate significant price volatility.
+
+3.  Model Prediction Summary:
+    *   LSTM model predicts a price of 261.64, lower than the current price of 275.92.
+    *   The model suggests a potential price correction in the short term.
+
+4.  Short-Term Impact: The conflicting signals from technical indicators combined with a bearish LSTM prediction point towards a potentially bearish short-term outlook. Traders should monitor price action for confirmation.
+
+5.  Confidence Score: 40
+                    """)
+
+
+
 
 with tab1_col2:
             st.markdown("### 📈 Prediction Summary")
@@ -550,26 +614,14 @@ with tab1_col2:
                 else:
                     future_trend = "📉 Bearish (Downward)"
                     trend_color = "red"
-                
+                st.session_state['future_trend'] = future_trend
+                st.markdown("#### Latest Prediction vs Actual")
+                st.metric(label="Predicted Closing Price", value=f"${last_predicted:.2f}", delta=f"{pred_diff:.2f} ({pred_diff_pct:+.2f}%)", delta_color="normal")
+                st.metric(label="Actual Closing Price", value=f"${last_actual:.2f}")
+
                 st.markdown(f"""
-                <div class="metric-card" style="background-color: #000; color: #fff;">
-                    <h4>Latest Prediction</h4>
-                    <p style="font-size: 2rem; font-weight: bold; color: #1f77b4;">
-                        ${last_predicted:.2f}
-                    </p>
-                    <p>Actual: ${last_actual:.2f}</p>
-                    <p style="color: {trend_color};">
-                        Difference: ${pred_diff:.2f} ({pred_diff_pct:+.2f}%)
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                st.markdown(f"""
-                <div class="metric-card" style="margin-top: 1rem; background-color: #000; color: #fff;">
-                <h4>Trend Direction</h4>
-                <p style="font-size: 1.5rem; color: {trend_color};">{future_trend}</p>
+                <p style="font-size: 1.2rem; font-weight: bold;">Trend Direction: <span style="color: {trend_color};">{future_trend}</span></p>
                 <p style="font-size: 0.9rem;">Based on {model_type} prediction</p>
-                </div>
                 """, unsafe_allow_html=True)
                 
                 
@@ -578,20 +630,20 @@ with tab1_col2:
                 actual_prices = data_with_indicators['Close'].iloc[lookback:].values
                 pred_prices = np.array(predictions).flatten()
                 
-                if len(actual_prices) == len(pred_prices):
-                    mae = np.mean(np.abs(actual_prices - pred_prices))
-                    mape = np.mean(np.abs((actual_prices - pred_prices) / actual_prices)) * 100
-                    accuracy = max(0, 100 - mape)
-                    st.markdown(f"""
-                    <div class="metric-card" style="margin-top: 1rem; background-color: #000; color: #fff;">
-                        <h4>Model Accuracy</h4>
-                        <p style="font-size: 1.5rem; font-weight: bold; color: green;">
-                            {accuracy:.2f}%
-                        </p>
-                        <p style="font-size: 0.9rem;">MAE: ${mae:.2f}</p>
-                        <p style="font-size: 0.9rem;">MAPE: {mape:.2f}%</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                # if len(actual_prices) == len(pred_prices):
+                # align lengths
+                actual_prices = actual_prices[-len(pred_prices):]   
+                mae = np.mean(np.abs(actual_prices - pred_prices))
+                mape = np.mean(np.abs((actual_prices - pred_prices) / actual_prices)) * 100
+                accuracy = max(0, 100 - mape)
+                st.markdown(f"""
+                <div class="metric-card" style="background-color: #fff; color: #000; padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px solid #eee;">
+                    <h4>📊 Model Performance</h4>
+                    <p style="font-size: 1.5rem; color: #4CAF50; font-weight: bold;">Accuracy: {accuracy:.2f}%</p>
+                    <p style="font-size: 1rem;">MAE: {mae:.2f}</p>
+                    <p style="font-size: 1rem;">MAPE: {mape:.2f}%</p>
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.info("👈 Click 'Load Data & Predict' to see predictions")
             
@@ -603,15 +655,8 @@ with tab1_col2:
             **Features:** {len(feature_columns)}  
             **Training Data:** {len(data)} days
             """)
-        
-            # gemini opinion on ticker news and sentiment
-            response = client.models.generate_content(
-                model="gemini-2.0-flash-lite",
-                contents="Explain how AI works in a few words",
-            )
-            print(response.text)
-            st.write(response.text)
 
+            
 
 
 
@@ -698,3 +743,4 @@ with tab3:
         file_name=f"{ticker}_stock_data.csv",
         mime="text/csv"
     )
+    
