@@ -67,7 +67,7 @@ def plot_rsi_macd(data):
     
     return fig
 
-# @st.cache_data
+@st.cache_data
 def load_stock_data(ticker, start_date, end_date):
     # """Load stock data from Yahoo Finance with extra validation"""
     # print("test #####################")
@@ -88,7 +88,7 @@ def load_stock_data(ticker, start_date, end_date):
         # Debug info
         st.write(f"✅ Data loaded: {ticker}")
         st.write("Shape:", data.shape)
-        st.dataframe(data.head())
+        # st.dataframe(data.head())
 
         return data
 
@@ -120,7 +120,7 @@ def add_technical_indicators(data):
     df = df.dropna()
     return df
 
-st.sidebar.image("C:\COLLEGE\PROJECT1\stock-favicon.png", width=100)
+st.sidebar.image(".\stock-favicon.png", width=100)
 st.sidebar.title("⚙️ Configuration")
 
 # Stock selection
@@ -272,8 +272,7 @@ with st.spinner(f'Loading data for {ticker}...'):
 
 # st.write(st.session_state.data)            
 data = st.session_state['data']
-if data is None:
-    st.st
+
 # Add technical indicators
 # data_with_indicators = add_technical_indicators(data)
 # Current metrics
@@ -354,18 +353,9 @@ def training_task(TrainRequest : TrainRequest, data):
     model.save(f"models/{TrainRequest.ticker}/{TrainRequest.model}.keras")
 
 
-## from fastapi import BackgroundTasks
-
 import io
 import asyncio
 
-# async def train(TrainRequest: TrainRequest):
-    
-
-#     print(data.head())
-
-#     asyncio.create_task(training_task(TrainRequest, data))
-#     return {"status": "success"}
 
     
 def list_saved_models(ticker: str):
@@ -659,7 +649,7 @@ with tab1_col2:
             
 
 
-
+tab1.dataframe(data.head())
 
             
 
