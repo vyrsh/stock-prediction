@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 import yfinance as yf
 import numpy as np
 import pandas as pd
@@ -123,7 +124,7 @@ def add_technical_indicators(data):
     df = df.dropna()
     return df
 
-st.sidebar.image(".\stock-favicon.png", width=100)
+st.sidebar.image(str(Path(__file__).parent / "stock-favicon.png"), width=100)
 st.sidebar.title(" Configuration")
 
 # Stock selection
