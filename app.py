@@ -67,7 +67,7 @@ st.markdown("""
 
 
 
-# @st.cache_data
+@st.cache_data
 def load_stock_data(ticker, start_date, end_date):
     """Load stock data from Yahoo Finance with extra validation"""
     try:
@@ -206,7 +206,7 @@ def plot_stock_price(data, predictions=None, title="Stock Price History"):
 # SIDEBAR
 # ============================================
 
-st.sidebar.image("C:\COLLEGE\PROJECT1\stock-favicon.png", width=100)
+st.sidebar.image("C:\COLLEGE\PROJECT1\Screenshot 2025-10-03 200609.png", width=100)
 st.sidebar.title("⚙️ Configuration")
 
 # Stock selection
@@ -376,7 +376,7 @@ if (
                     st.session_state['scaler_features'] = scaler_features
             
             
- 
+            
             model = st.session_state['model']
             scaler_target = st.session_state['scaler_target']
             scaler_features = st.session_state['scaler_features']
@@ -407,7 +407,7 @@ if (
 
                     progress_bar.progress(75)
                     status_text.text('✅ Predictions complete!')
-                    progress_bar.progress(100)
+                    progress_bar.progress(100)  
 
                     st.session_state['predictions'] = predictions
 

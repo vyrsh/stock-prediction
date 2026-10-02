@@ -13,7 +13,7 @@ import plotly.graph_objects as go
 
 st.set_page_config(
     page_title="Stock Price Predictor",
-    page_icon="📈",
+    # page_icon="📈",
        layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -35,7 +35,7 @@ def plot_technical_indicators(data):
     fig.add_trace(go.Scatter(x=data.index, y=bb_low, name='BB Low', line=dict(color='gray', dash='dash')))
 
     fig.update_layout(
-        title='Technical Indicators',
+        title='Moving Averages & Bollinger Bands',
         xaxis_title='Date',
         yaxis_title='Price ($)',
         hovermode='x unified',
@@ -79,21 +79,24 @@ def load_stock_data(ticker, start_date, end_date):
             progress=False,
             auto_adjust=True  # adjust for splits/dividends
         )
+
         print("data fetched #####################", data.head())
 
         if data is None or data.empty:
-            st.error(f"❌ No data found for {ticker}. Try another ticker or shorter date range.")
+            st.error(f" No data found for {ticker}. Try another ticker or shorter date range.")
             return None
-
+        
+        if isinstance(data.columns, pd.MultiIndex):
+            data = data.xs(ticker, axis=1, level="Ticker")
         # Debug info
-        st.write(f"✅ Data loaded: {ticker}")
-        st.write("Shape:", data.shape)
+        st.write(f"Data loaded: {ticker}")
+        # st.write("Shape:", data.shape)
         # st.dataframe(data.head())
 
         return data
 
     except Exception as e:
-        st.error(f"⚠️ Error fetching data for {ticker}: {e}")
+        st.error(f"Error fetching data for {ticker}: {e}")
         return None
 
 def add_technical_indicators(data):
@@ -121,7 +124,7 @@ def add_technical_indicators(data):
     return df
 
 st.sidebar.image(".\stock-favicon.png", width=100)
-st.sidebar.title("⚙️ Configuration")
+st.sidebar.title(" Configuration")
 
 # Stock selection
 popular_stocks = {
@@ -130,9 +133,10 @@ popular_stocks = {
     'Microsoft': 'MSFT',
     'Tesla': 'TSLA',
     'Amazon': 'AMZN',
+    'Wallmart': 'WMT',
     'Meta': 'META',
-    'Netflix': 'NFLX',
-    'NVIDIA': 'NVDA'
+    'AMD': 'AMD'
+
 }
 
 stock_name = st.sidebar.selectbox("Select Stock", list(popular_stocks.keys()))
@@ -153,7 +157,6 @@ start_date_input = st.sidebar.date_input("Start Date", start_date)
 end_date_input = st.sidebar.date_input("End Date", end_date)
 
 
-from pydantic import BaseModel
 from typing import Union
 import requests
 from tensorflow import keras
@@ -169,67 +172,90 @@ def list_models():
 
 def lstm(x_train):
     model = keras.models.Sequential()
-    model.add(keras.layers.LSTM(units=64,
-                                return_sequences=True,
-                                input_shape=(x_train.shape[1], 1)))
+    
+    model.add(keras.layers.LSTM(
+        units=128,
+        return_sequences=True,
+        input_shape=(x_train.shape[1], x_train.shape[2])
+    ))
+    model.add(keras.layers.Dropout(0.2))
+    
     model.add(keras.layers.LSTM(units=64))
-    model.add(keras.layers.Dense(32))
-    model.add(keras.layers.Dropout(0.5))
-    model.add(keras.layers.Dense(1))
+    model.add(keras.layers.Dropout(0.2))
+    
+    model.add(keras.layers.Dense(32, activation='relu'))
+    model.add(keras.layers.Dense(1, activation='linear'))
+    
+    model.compile(
+        optimizer='adam',
+        loss='mean_squared_error',
+        metrics=['mae']
+    )
+    
     model.summary()
-    model.compile(optimizer='adam',
-              loss='mean_squared_error')
     return model
 
-def Bidirectional_LSTM(x_train):
-    model = keras.models.Sequential()
-    model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=64,
-                                return_sequences=True),
-                                input_shape=(x_train.shape[1], 1)))
-    model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=64)))
-    model.add(keras.layers.Dense(32))
-    model.add(keras.layers.Dropout(0.5))
-    model.add(keras.layers.Dense(1))
-    model.summary()
-    model.compile(optimizer='adam',
-              loss='mean_squared_error')
-    return model
+
+# def Bidirectional_LSTM(x_train):
+#     model = keras.models.Sequential()
+#     model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=64,
+#                                 return_sequences=True),
+#                                 input_shape=(x_train.shape[1], 1)))
+#     model.add(keras.layers.Bidirectional(keras.layers.LSTM(units=64)))
+#     model.add(keras.layers.Dense(32))
+#     model.add(keras.layers.Dropout(0.5))
+#     model.add(keras.layers.Dense(1))
+#     model.summary()
+#     model.compile(optimizer='adam',
+#               loss='mean_squared_error')
+#     return model
 
 def GRU(x_train):
     model = keras.models.Sequential()
-    model.add(keras.layers.GRU(units=64,
-                                return_sequences=True,
-                                input_shape=(x_train.shape[1], 1)))
+    
+    model.add(keras.layers.GRU(
+        units=128,
+        return_sequences=True,
+        input_shape=(x_train.shape[1], x_train.shape[2])
+    ))
+    model.add(keras.layers.Dropout(0.2))
+    
     model.add(keras.layers.GRU(units=64))
-    model.add(keras.layers.Dense(32))
-    model.add(keras.layers.Dropout(0.5))
-    model.add(keras.layers.Dense(1))
-    model.summary()
-    model.compile(optimizer='adam',
-              loss='mean_squared_error')
+    model.add(keras.layers.Dropout(0.2))
+    
+    model.add(keras.layers.Dense(32, activation='relu'))
+    model.add(keras.layers.Dense(1, activation='linear'))
+    
+    model.compile(
+        optimizer='adam',
+        loss='mean_squared_error',
+        metrics=['mae']
+    )
+    
+    model.summary() 
     return model
 
 def transformer(x_train):
     # Placeholder for transformer model
     pass
  
-def lstm_trained(x_train):
+# def lstm_trained(x_train):
     
-    try:
-        model = keras.models.load_weights('models/trained_models/lstm_model.keras')
-        return model
-    except AttributeError as e:
-        model = lstm(x_train)
-        model.save('models/trained_models/lstm_model.keras')
-        return model
+#     try:
+#         model = keras.models.load_weights('models/trained_models/lstm_model.keras')
+#         return model
+#     except AttributeError as e:
+#         model = lstm(x_train)
+#         model.save('models/trained_models/lstm_model.keras')
+#         return model
     
 
-Available_models = {"LSTM": lstm, "GRU":GRU,  "LSTM_persistant": lstm_trained}
+Available_models = {"LSTM": lstm, "GRU":GRU}
 
 
 
 # Model selection
-st.sidebar.subheader("🤖 Model Selection")
+st.sidebar.subheader(" Model Selection")
 st.session_state["model_type"] = st.sidebar.selectbox(
     "Choose Model",
     list(Available_models.keys())
@@ -246,7 +272,7 @@ if st.sidebar.button("🗑️ Clear Cache & Reset", use_container_width=True):
     st.cache_data.clear()
     for key in list(st.session_state.keys()):
         del st.session_state[key]
-    st.success("✅ Cache cleared! Reloading...")
+    st.success("Cache cleared! Reloading...")
     st.rerun()
 
 # ============================================
@@ -265,9 +291,9 @@ with st.spinner(f'Loading data for {ticker}...'):
         if data is not None and not data.empty and 'Close' in data.columns:
             st.session_state['data'] = data
             st.session_state['ticker'] = ticker
-            st.success(f"✅ Successfully loaded {len(data)} days of data!")
+            st.success(f" Successfully loaded {len(data)} days of data!")
         else:
-            st.warning("⚠️ No valid data loaded. Please check your internet connection, ticker, and date range.")
+            st.warning(" No valid data loaded. Please check your internet connection, ticker, and date range.")
             st.session_state['data'] = None
 
 # st.write(st.session_state.data)            
@@ -276,8 +302,9 @@ data = st.session_state['data']
 # Add technical indicators
 # data_with_indicators = add_technical_indicators(data)
 # Current metrics
-st.subheader("📊 Current Metrics")
+st.subheader(" Current Metrics")
 col1, col2, col3, col4, col5 = st.columns(5)
+print("data coloumns", data.columns)
 current_price = float(data['Close'].iloc[-1])
 prev_price = float(data['Close'].iloc[-2])
 price_change = current_price - prev_price
@@ -289,7 +316,7 @@ col4.metric("Volume", f"{int(data['Volume'].iloc[-1]):,}")
 col5.metric("52-Week High", f"${float(data['Close'].tail(252).max()):.2f}")
 
 # Tabs for different views
-tab1, tab2, tab3, tab4 = st.tabs(["📈 Price Prediction", "📊 Technical Analysis", "📉 Historical Data", "🎯 Model Performance"])
+tab1, tab2, tab3 = st.tabs(["📈 Price Prediction", "📊 Technical Analysis", "📉 Historical Data"])
 
 
 tab1_col1, tab1_col2 = tab1.columns([2, 1])
@@ -309,12 +336,14 @@ def plot_stock_price(data, predictions=None, title="Stock Price History"):
     if predictions is not None:
         pred_prices = np.array(predictions).flatten()
 
-        fig.add_trace(go.Scatter(x=data.index[55:], y=pred_prices, mode='lines', name='Predicted'))
+        fig.add_trace(go.Scatter(x=data.index[60:], y=pred_prices, mode='lines', name='Predicted'))
     fig.update_layout(title=title, xaxis_title='Date', yaxis_title='Price', template='plotly_white')
     return fig
 # "BiLSTM": Bidirectional_LSTM,
 # "Transformer": transformer,
-class TrainRequest(BaseModel):
+from dataclasses import dataclass
+@dataclass
+class TrainRequest():
     ticker: str 
     from_date: str | None = None 
     to_date: str | None = None
@@ -389,14 +418,19 @@ def predict(data, ticker: str, model: str):
         x_test.append(close_scaled_data[i-60:i, 0])
     x_test = np.array(x_test)
     x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
-  
+    
+    print(x_test.shape)
     predictions = model.predict(x_test)
+    print(predictions.shape)
+    # for i in range(60):
+    #     np.append(predictions, model.predict(predictions[-61:-1, 0].reshape(1,60,1)), axis=0)
+    
     predictions = scaler.inverse_transform(predictions)
 
     return {"predictions": predictions.tolist()}
 
 with tab2:
-        st.subheader("📊 Technical Indicators Analysis")
+        st.subheader(" Technical Indicators Analysis")
         
         # Technical indicators plot
         fig_tech = plot_technical_indicators(data_with_indicators.tail(180))
@@ -407,7 +441,7 @@ with tab2:
         st.plotly_chart(fig_rsi_macd, use_container_width=True)
         
         # Trading signals
-        st.subheader("🎯 Trading Signals")
+        st.subheader(" Trading Signals")
         
         col1, col2, col3 = st.columns(3)
         
@@ -424,7 +458,7 @@ with tab2:
                 rsi_signal = "🟡 Neutral"
                 rsi_color = "orange"
             col1.markdown(f"""
-            <div class="metric-card" style="background-color: #000; color: #fff;">
+            <div class="metric-card" style="background-color: #fff; color: #000;">
                 <h4>RSI Signal</h4>
                 <p style="font-size: 1.5rem; color: {rsi_color};">{rsi_signal}</p>
                 <p>Value: {current_rsi:.2f}</p>
@@ -445,7 +479,7 @@ with tab2:
                 macd_signal = "🔴 Bearish"
                 macd_color = "red"
             col2.markdown(f"""
-            <div class="metric-card" style="background-color: #000; color: #fff;">
+            <div class="metric-card" style="background-color: #fff; color: #000;">
                 <h4>MACD Signal</h4>
                 <p style="font-size: 1.5rem; color: {macd_color};">{macd_signal}</p>
                 <p>MACD: {current_macd:.2f}</p>
@@ -471,7 +505,7 @@ with tab2:
                 bb_signal = "🟡 Within Bands"
                 bb_color = "orange"
             col3.markdown(f"""
-            <div class="metric-card" style="background-color: #000; color: #fff;">
+            <div class="metric-card" style="background-color: #fff; color: #000;">
                 <h4>Bollinger Bands</h4>
                 <p style="font-size: 1.5rem; color: {bb_color};">{bb_signal}</p>
                 <p>Price: ${current_close:.2f}</p>
@@ -480,9 +514,9 @@ with tab2:
         else:
             col3.warning("Bollinger Bands data not available.")
 
-from google import genai
+# from google import genai
 # set gemini api key as enviroment variable
-client = genai.Client(api_key="AIzaSyBk1kY9-tiQtlWAzZ8Yw_X9I2MTNtRKwGA")
+# client = genai.Client(vertexai=True, project="pristine-sphere-477402-t2")
 
 with tab1_col1:
     # check if selected model exists for current ticker
@@ -491,15 +525,15 @@ with tab1_col1:
     print("model type #####################", model_type)
     model_name = model_type + ".keras"
     if model_name in saved_models:
-        st.success(f"✅ Model '{model_type}' found for {ticker}!")
+        st.success(f" Model '{model_type}' found for {ticker}!")
         # load model
-        info = st.info(f"ℹ️ Loading existing model '{model_type}' for {ticker}...")
+        info = st.info(f"ℹ Loading existing model '{model_type}' for {ticker}...")
         predictions = predict(data, ticker, model_name)
         st.session_state['predictions'] = predictions['predictions']
         info.empty()
 
     else: # train model and save it
-        st.warning(f"⚠️ Model '{model_type}' not found for {ticker}. Training new model...")
+        st.warning(f" Model '{model_type}' not found for {ticker}. Training new model...")
         TrainRequest_instance = TrainRequest(
             ticker=ticker,
             from_date=start_date_input.strftime("%Y-%m-%d"),
@@ -510,7 +544,7 @@ with tab1_col1:
         training_task(TrainRequest_instance, data)
         predictions = predict(data, ticker, model_name)
         st.session_state['predictions'] = predictions['predictions']        
-        st.success(f"✅ Model '{model_type}' trained and saved for {ticker}!") 
+        st.success(f" Model '{model_type}' trained and saved for {ticker}!") 
 
 
     # predict yth day using previous x days
@@ -520,7 +554,7 @@ with tab1_col1:
                                     title=f"{ticker} Stock Price Prediction using {model_type}"), use_container_width=True)
     try:
         response = client.models.generate_content(
-                        model="gemini-2.0-flash-lite",
+                        model="gemini-2.5-pro",
                         contents=f"""Generate a concise, professional stock analysis summary for the ticker {ticker} using the following data:
 
                         Technical Indicators:
@@ -557,11 +591,12 @@ with tab1_col1:
                     )
         print(response.text)
         # write response text in markdown
-        st.markdown("###  AI-Generated Stock Analysis Summary")
+        st.write("AI-Generated Stock Analysis Summary")
         st.info(f"""
                             {response.text}
                     """)
     except Exception as e:
+            print("Error generating AI summary:", e)
             st.info(f"""
                     **{ticker} Stock Analysis – Concise Summary**
 
@@ -586,7 +621,7 @@ with tab1_col1:
 
 
 with tab1_col2:
-            st.markdown("### 📈 Prediction Summary")
+            st.markdown("###  Prediction Summary")
             
             if 'predictions' in st.session_state:
                 predictions = st.session_state['predictions']
@@ -599,10 +634,10 @@ with tab1_col2:
                 
                 # Future trend
                 if pred_diff > 0:
-                    future_trend = "📈 Bullish (Upward)"
+                    future_trend = " Bullish (Upward)"
                     trend_color = "green"
                 else:
-                    future_trend = "📉 Bearish (Downward)"
+                    future_trend = " Bearish (Downward)"
                     trend_color = "red"
                 st.session_state['future_trend'] = future_trend
                 st.markdown("#### Latest Prediction vs Actual")
@@ -617,7 +652,7 @@ with tab1_col2:
                 
                 
                 # Calculate accuracy metrics
-                actual_prices = data_with_indicators['Close'].iloc[lookback:].values
+                actual_prices = data["Close"].iloc[lookback:].to_numpy().flatten()                
                 pred_prices = np.array(predictions).flatten()
                 
                 # if len(actual_prices) == len(pred_prices):
@@ -628,17 +663,17 @@ with tab1_col2:
                 accuracy = max(0, 100 - mape)
                 st.markdown(f"""
                 <div class="metric-card" style="background-color: #fff; color: #000; padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px solid #eee;">
-                    <h4>📊 Model Performance</h4>
+                    <h4> Model Performance</h4>
                     <p style="font-size: 1.5rem; color: #4CAF50; font-weight: bold;">Accuracy: {accuracy:.2f}%</p>
                     <p style="font-size: 1rem;">MAE: {mae:.2f}</p>
                     <p style="font-size: 1rem;">MAPE: {mape:.2f}%</p>
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.info("👈 Click 'Load Data & Predict' to see predictions")
+                st.info("Click 'Load Data & Predict' to see predictions")
             
             st.markdown("---")
-            st.markdown("### ⚙️ Model Info")
+            st.markdown("### Model Info")
             st.info(f"""
             **Model Type:** {model_type}  
             **Lookback Period:** {lookback} days  
@@ -659,7 +694,7 @@ tab1.dataframe(data.head())
 
     # ===== TAB 2: TECHNICAL ANALYSIS =====
 with tab3:
-    st.subheader("📉 Historical Price Data")
+    st.subheader(" Historical Price Data")
     
     # Candlestick chart
     last90 = data.tail(90)
@@ -709,7 +744,7 @@ with tab3:
     st.plotly_chart(fig_volume, use_container_width=True)
     
     # Data table
-    st.subheader("📋 Recent Data")
+    st.subheader(" Recent Data")
     display_columns = ['Open', 'High', 'Low', 'Close', 'Volume', 'MA_20', 'MA_50', 'RSI']
     st.dataframe(
         data_with_indicators[display_columns].tail(20).style.format({
@@ -728,7 +763,7 @@ with tab3:
     # Download data
     csv = data_with_indicators.to_csv()
     st.download_button(
-        label="📥 Download Data as CSV",
+        label=" Download Data as CSV",
         data=csv,
         file_name=f"{ticker}_stock_data.csv",
         mime="text/csv"
