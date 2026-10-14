@@ -129,7 +129,6 @@ st.sidebar.title(" Configuration")
 
 # Stock selection
 popular_stocks = {
-    'Apple': 'AAPL',
     'Google': 'GOOGL',
     'Microsoft': 'MSFT',
     'Tesla': 'TSLA',
@@ -137,6 +136,7 @@ popular_stocks = {
     'Wallmart': 'WMT',
     'Meta': 'META',
     'AMD': 'AMD'
+
 
 }
 
